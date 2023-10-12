@@ -6,10 +6,13 @@ import {useToast} from "@/components/ui/use-toast";
 import {Loader2} from "lucide-react";
 import {useMutation} from "@tanstack/react-query";
 import axios from "axios";
+import {fillCacheWithNewSubTreeData} from "next/dist/client/components/router-reducer/fill-cache-with-new-subtree-data";
 
 type Props = {
     chapter: Chapter;
     chapterIndex: number;
+    completedChapters: Set<String>;
+    setCompletedChapters: React.Dispatch<React.SetStateAction<Set<String>>>;
 }
 
 export type ChapterCardHandler = {
@@ -17,33 +20,70 @@ export type ChapterCardHandler = {
 }
 
 const ChapterCard = React.forwardRef<ChapterCardHandler, Props>(
-    ({chapter, chapterIndex}, ref) => {
+    ({chapter, chapterIndex, setCompletedChapters, completedChapters}, ref) => {
 
-    const {toast} = useToast();
-    const [success, setSuccess] = React.useState<boolean | null>(true);
-    const {mutate: getChapterInfo, isLoading} = useMutation({
-        mutationFn: async () => {
-            const response = await axios.post('/api/chapter/getInfo', {
-                chapterId: chapter.id,
+        const {toast} = useToast();
+        const [success, setSuccess] = React.useState<boolean | null>(null);
+        const {mutate: getChapterInfo, isLoading} = useMutation({
+            mutationFn: async () => {
+                const response = await axios.post('/api/chapter/getInfo', {
+                    chapterId: chapter.id,
+                });
+                return response.data;
+            },
+        });
+
+        const addChapterIdToSet = React.useCallback(() => {
+            setCompletedChapters((prev) => {
+                const newSet = new Set(prev);
+                newSet.add(chapter.id);
+                return newSet;
             });
-            return response.data;
-        },
-    });
+        }, [chapter.id, setCompletedChapters]);
 
-    return (
-        <div
-            key={chapter.id}
-            className={cn("px-4 py-2 mt-2 rounded flex justify-between", {
-                "bg-secondary": success === null,
-                "bg-red-500": success === false,
-                "bg-green-500": success === true,
-            })}
-        >
-            <h5>{chapter.name}</h5>
-            {isLoading && <Loader2 className="animate-spin"/>}
-        </div>
-    )
-});
+        React.useEffect(() => {
+            if(chapter.videoId){
+                setSuccess(true);
+                addChapterIdToSet;
+            }
+        }, [chapter, addChapterIdToSet]);
+
+
+
+        React.useImperativeHandle(ref, () => ({
+            async triggerLoad() {
+                getChapterInfo(undefined, {
+                    onSuccess: () => {
+                        setSuccess(true);
+                        addChapterIdToSet();
+                    },
+                    onError: (error) => {
+                        console.log(error)
+                        setSuccess(false);
+                        toast({
+                            title: "Error",
+                            description: "There was an error loading your chapter",
+                            variant: "destructive",
+                        });
+                        addChapterIdToSet();
+                    }
+                })
+            }
+        }));
+        return (
+            <div
+                key={chapter.id}
+                className={cn("px-4 py-2 mt-2 rounded flex justify-between", {
+                    "bg-secondary": success === null,
+                    "bg-red-500": success === false,
+                    "bg-green-500": success === true,
+                })}
+            >
+                <h5>{chapter.name}</h5>
+                {isLoading && <Loader2 className="animate-spin"/>}
+            </div>
+        )
+    });
 
 ChapterCard.displayName = "ChapterCard";
 
