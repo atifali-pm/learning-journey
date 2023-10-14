@@ -5,9 +5,22 @@ import {strict_output} from "@/lib/gpt";
 import {getUnsplashImage} from "@/lib/unsplash";
 import {prisma} from "@/lib/db";
 import userAccountNav from "@/components/UserAccountNav";
+import {getAuthSession} from "@/lib/auth";
+import {checkSubscription} from "@/lib/subscription";
 
 export async function POST (req: Request, res: Response){
     try {
+
+        const session = await getAuthSession();
+        if(!session?.user){
+            return new NextResponse("unauthorized", {status: 401});
+        }
+
+        const isPro = await checkSubscription();
+        if(session.user.credits <= 0 && !isPro){
+            return new NextResponse("No credits", {status: 401});
+        }
+
         const body = await req.json()
         const { title, units } = createChaptersSchema.parse(body);
 
@@ -22,12 +35,12 @@ export async function POST (req: Request, res: Response){
         let output_units: outputUnits = await strict_output(
             "You are an AI capable of curating course content, coming up with relevant chapter titles, and finding relevant youtube videos for each chapter",
             new Array(units.length).fill(
-                `It is your job to create a course about ${title}. The user has requested to create chapters for each of the units. Then, for each chapter, provide a detailed youtube search query that can be used to find an informative educationalvideo for each chapter. Each query should give an educational informative course in youtube.`
+                `It is your job to create a course about ${title}. The user has requested to create chapters for each of the units. Then, for each chapter, provide a detailed youtube search query that can be used to find an informative educational video for each chapter. Each query should give an educational informative course in youtube.`
             ),
             {
                 title: "title of the unit",
                 chapters:
-                    "an array of chapters, each chapter should have a youtube_search_query and a chapter_title key in the JSON object",
+                    `an array of chapters, each chapter should have a youtube_search_query and a chapter_title key in the JSON object`,
             }
         );
 
@@ -69,6 +82,17 @@ export async function POST (req: Request, res: Response){
                 })
             });
         }
+
+        await prisma.user.update({
+            where: {
+                id: session.user.id,
+            },
+            data: {
+                credits: {
+                    decrement: 1
+                }
+            }
+        });
 
         return NextResponse.json({course_id: course.id });
 

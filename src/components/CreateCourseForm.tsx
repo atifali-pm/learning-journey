@@ -13,14 +13,17 @@ import {useToast} from "@/components/ui/use-toast";
 import {useMutation} from "@tanstack/react-query";
 import axios from "axios";
 import {useRouter} from "next/navigation";
+import SubscriptionAction from "@/components/SubscriptionAction";
 
-type Props = { isPro: boolean }
+type Props = { isPro: boolean };
 
-const CreateCourseForm = ({isPro}: Props) => {
+type Input = z.infer<typeof createChaptersSchema>;
+
+const CreateCourseForm = ({ isPro }: Props) => {
     const router = useRouter();
-    const {toast} = useToast();
-    const {mutate: createChapters, isLoading} = useMutation({
-        mutationFn: async ({title, units}: Input) => {
+    const { toast } = useToast();
+    const { mutate: createChapters, isLoading } = useMutation({
+        mutationFn: async ({ title, units }: Input) => {
             const response = await axios.post("/api/course/createChapters", {
                 title,
                 units,
@@ -33,7 +36,7 @@ const CreateCourseForm = ({isPro}: Props) => {
         defaultValues: {
             title: "",
             units: ["", "", ""],
-        }
+        },
     });
 
     function onSubmit(data: Input) {
@@ -73,7 +76,7 @@ const CreateCourseForm = ({isPro}: Props) => {
                     <FormField
                         control={form.control}
                         name="title"
-                        render={({field}) => {
+                        render={({ field }) => {
                             return (
                                 <FormItem className="flex flex-col items-start w-full sm:items-center sm:flex-row">
                                     <FormLabel className="flex-[1] text-xl">Title</FormLabel>
@@ -87,27 +90,27 @@ const CreateCourseForm = ({isPro}: Props) => {
                             );
                         }}
                     />
+
                     <AnimatePresence>
                         {form.watch("units").map((_, index) => {
                             return (
                                 <motion.div
                                     key={index}
-                                    initial={{opacity: 0, height: 0}}
-                                    animate={{opacity: 1, height: "auto"}}
-                                    exit={{opacity: 0, height: 0}}
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
                                     transition={{
-                                        opacity: {duration: 0.2},
-                                        height: {duration: 0.2},
+                                        opacity: { duration: 0.2 },
+                                        height: { duration: 0.2 },
                                     }}
                                 >
                                     <FormField
                                         key={index}
                                         control={form.control}
                                         name={`units.${index}`}
-                                        render={({field}) => {
+                                        render={({ field }) => {
                                             return (
-                                                <FormItem
-                                                    className="flex flex-col items-start w-full sm:items-center sm:flex-row">
+                                                <FormItem className="flex flex-col items-start w-full sm:items-center sm:flex-row">
                                                     <FormLabel className="flex-[1] text-xl">
                                                         Unit {index + 1}
                                                     </FormLabel>
@@ -127,7 +130,7 @@ const CreateCourseForm = ({isPro}: Props) => {
                     </AnimatePresence>
 
                     <div className="flex items-center justify-center mt-4">
-                        <Separator className="flex-[1]"/>
+                        <Separator className="flex-[1]" />
                         <div className="mx-4">
                             <Button
                                 type="button"
@@ -138,7 +141,7 @@ const CreateCourseForm = ({isPro}: Props) => {
                                 }}
                             >
                                 Add Unit
-                                <Plus className="w-4 h-4 ml-2 text-green-500"/>
+                                <Plus className="w-4 h-4 ml-2 text-green-500" />
                             </Button>
 
                             <Button
@@ -150,12 +153,13 @@ const CreateCourseForm = ({isPro}: Props) => {
                                 }}
                             >
                                 Remove Unit
-                                <Trash className="w-4 h-4 ml-2 text-red-500"/>
+                                <Trash className="w-4 h-4 ml-2 text-red-500" />
                             </Button>
                         </div>
-                        <Separator className="flex-[1]"/>
+                        <Separator className="flex-[1]" />
                     </div>
                     <Button
+                        disabled={isLoading}
                         type="submit"
                         className="w-full mt-6"
                         size="lg"
@@ -164,8 +168,9 @@ const CreateCourseForm = ({isPro}: Props) => {
                     </Button>
                 </form>
             </Form>
+            {!isPro && <SubscriptionAction />}
         </div>
-    )
+    );
 };
 
 export default CreateCourseForm;
